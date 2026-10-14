@@ -1,79 +1,76 @@
 # JSON Dataset Service
 
-A Spring Boot REST service that stores JSON records in named datasets (relational database) and lets you
-query a dataset with **group-by** and **sort-by** operators.
+A Spring Boot REST API that stores schema-free JSON records in named **datasets** (relational database) and lets clients query any dataset with dynamic **group-by** and **sort-by** operators.
 
-* Java 17, Spring Boot 4.1.1, Spring Data JPA, Jackson 3
-* Database: **H2 in-memory by default** (zero setup) or **PostgreSQL** via a profile
-* Interactive API docs with **Swagger UI** (springdoc-openapi); also testable with Postman / curl (collection in `docs/`)
+| | |
+|---|---|
+| **Live API** | https://jsonoperations.onrender.com |
+| **Swagger UI** | https://jsonoperations.onrender.com/swagger-ui/index.html |
+| **OpenAPI JSON** | https://jsonoperations.onrender.com/v3/api-docs |
 
----
-
-## Run it
-
-**Prerequisites:** JDK 17+ (Maven is provided by the wrapper).
-
-```bash
-git clone <your-repo-url>
-cd json-dataset-service
-./mvnw spring-boot:run          # Windows: mvnw.cmd spring-boot:run
-```
-
-The API is then available at `http://localhost:8080`.
-
-| What | URL |
-|------|-----|
-| **Swagger UI** (try the API in the browser) | http://localhost:8080/swagger-ui.html |
-| OpenAPI JSON | http://localhost:8080/v3/api-docs |
-| H2 console | http://localhost:8080/h2-console |
-
-H2 console: `http://localhost:8080/h2-console`
-(JDBC URL `jdbc:h2:mem:datasetdb`, user `sa`, empty password). Data is lost on restart with H2.
-
-### With PostgreSQL
-
-```bash
-docker run -d --name datasetdb -p 5432:5432 -e POSTGRES_DB=datasetdb -e POSTGRES_PASSWORD=postgres postgres:16
-./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres
-```
-
-Override the connection with `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` environment variables.
-
-### Run the tests
-
-```bash
-./mvnw test
-```
-
-Unit tests (services, strategies, DTOs), a `@DataJpaTest` repository test, `@WebMvcTest` controller tests and an
-end-to-end `@SpringBootTest` that replays the examples from the assignment.
+> The service runs on a free Render instance, so the first request after a period of inactivity can take 30-60 seconds while it wakes up.
 
 ---
 
-## API
+## Approach
 
-The same contract is browsable and executable in Swagger UI at `/swagger-ui.html`.
+**What I built.** A layered Spring Boot 4 / Java 17 service with two REST endpoints:
 
-Base path: `/api/dataset`. Dataset names: 1-100 characters, letters/digits/`_`/`-`. A dataset is created
-implicitly by its first record.
+1. **Insert Record** - `POST /api/dataset/{datasetName}/record` stores any JSON object in a dataset. A dataset is created implicitly by its first record.
+2. **Query** - `GET /api/dataset/{datasetName}/query` returns the dataset's records, optionally grouped by a field (`groupBy`), sorted by a field (`sortBy`, `order=asc|desc`), or both.
+
+**How it works.**
+
+- **Storage.** One relational table, `dataset_record`, holds `dataset_name`, `record_id` and the whole record as JSON text. This keeps the schema flexible (any fields are allowed) while staying portable across relational databases. A unique constraint on `(dataset_name, record_id)` is the real guard against duplicate ids, so concurrent inserts are safe.
+- **Dynamic operators.** Group-by and sort-by field names arrive at request time. Records are loaded in insertion order, validated, then grouped and sorted in the service layer.
+- **Design patterns.** Sorting uses the **Strategy** pattern (`AscendingSortStrategy`, `DescendingSortStrategy`, auto-registered by Spring), so a new behaviour is added by writing one `@Component` without touching existing code. `DatasetService` acts as a **facade** over small single-purpose collaborators (`GroupingService`, `SortingService`, `RecordFieldValidator`, `RecordJsonMapper`).
+- **Robustness.** Input is validated up front and a bad request never does partial work. All errors are returned as RFC 9457 `application/problem+json` with correct status codes, and unexpected failures never leak internals.
+- **Mixed-type safety.** Sorting uses a total-order comparator, so a field holding numbers, strings and booleans never causes a `ClassCastException`.
+- **Quality.** Built test-first with JUnit 5: unit tests, a repository test, controller slice tests and end-to-end tests that replay the assignment's examples. API documentation is generated with springdoc-openapi (Swagger UI), and a Postman collection is included.
+
+## Tech stack
+
+| Area | Choice |
+|------|--------|
+| Language | Java 17 |
+| Framework | Spring Boot 4.1 (Web MVC, Data JPA, Validation, Actuator) |
+| Database | PostgreSQL (Neon) in deployment; in-memory H2 fallback for zero-setup local runs |
+| API docs | springdoc-openapi (Swagger UI / OpenAPI 3) |
+| Build | Maven (wrapper included) |
+| Tests | JUnit 5, Mockito, Spring Test (MockMvc, `@DataJpaTest`) |
+| Deployment | Docker on Render |
+
+---
+
+## API reference
+
+Base path: `/api/dataset`. Dataset names are 1-100 characters: letters, digits, `_` or `-`.
 
 ### 1. Insert a record
 
-`POST /api/dataset/{datasetName}/record` - `Content-Type: application/json`
+`POST /api/dataset/{datasetName}/record` with `Content-Type: application/json`
 
 ```bash
-curl -X POST http://localhost:8080/api/dataset/employee_dataset/record \
+curl -X POST https://jsonoperations.onrender.com/api/dataset/employee_dataset/record \
   -H "Content-Type: application/json" \
-  -d '{"id":1,"name":"John Doe","age":30,"department":"Engineering"}'
+  -d '{"id": 1, "name": "John Doe", "age": 30, "department": "Engineering"}'
 ```
 
-**201 Created**
+**`201 Created`**
+
 ```json
-{ "message": "Record added successfully", "dataset": "employee_dataset", "recordId": 1 }
+{
+  "message": "Record added successfully",
+  "dataset": "employee_dataset",
+  "recordId": 1
+}
 ```
 
-Rules: the body must be a JSON object with an integer `id`; `id` must be unique **within the dataset**
-(the same id may exist in different datasets). All other fields are free-form.
+Rules:
+
+- The body must be a JSON object containing an integer `id`.
+- `id` must be unique **within the dataset** (the same `id` may exist in different datasets).
+- All other fields are free-form.
 
 ### 2. Query a dataset
 
@@ -81,11 +78,19 @@ Rules: the body must be a JSON object with an integer `id`; `id` must be unique 
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
-| `groupBy` | no | Field to group records by |
-| `sortBy`  | no | Field to sort by |
-| `order`   | no | `asc` (default) or `desc`, case-insensitive |
+| `groupBy` | No | Field to group records by |
+| `sortBy`  | No | Field to sort records by |
+| `order`   | No | `asc` (default) or `desc`, case-insensitive |
 
-**Group by** - `GET .../query?groupBy=department`
+| Parameters supplied | Response property |
+|---------------------|-------------------|
+| `groupBy` only | `groupedRecords` |
+| `sortBy` only | `sortedRecords` |
+| `groupBy` + `sortBy` | `groupedRecords`, with records sorted inside each group |
+| none | `records` (insertion order) |
+
+**Group by** - `GET /api/dataset/employee_dataset/query?groupBy=department`
+
 ```json
 {
   "groupedRecords": {
@@ -100,7 +105,8 @@ Rules: the body must be a JSON object with an integer `id`; `id` must be unique 
 }
 ```
 
-**Sort by** - `GET .../query?sortBy=age&order=asc`
+**Sort by** - `GET /api/dataset/employee_dataset/query?sortBy=age&order=asc`
+
 ```json
 {
   "sortedRecords": [
@@ -111,66 +117,138 @@ Rules: the body must be a JSON object with an integer `id`; `id` must be unique 
 }
 ```
 
-**Both** - `GET .../query?groupBy=department&sortBy=age&order=desc` returns `groupedRecords`, with the records
-sorted inside each group.
+**Behaviour details**
 
-**Neither** - `GET .../query` returns `{ "records": [ ... ] }` in insertion order.
+- Groups appear in order of first occurrence. Group keys are the text form of the value (`30` becomes `"30"`).
+- Records missing the field (or holding `null`) fall into the group `"null"` and are placed **last** when sorting, in both directions.
+- Numbers sort numerically and strings lexicographically (case-sensitive). Mixed types never fail: numbers < booleans < strings < other.
+- Sorting is stable: records with equal values keep their insertion order.
 
-Semantics:
-* Groups appear in order of first occurrence. Group keys are the text form of the value (`30` -> `"30"`).
-* Records missing the field (or holding `null`) go to the group `"null"` and are placed **last** when sorting,
-  in both directions.
-* Numbers sort numerically, strings lexicographically (case-sensitive). Mixed types never fail:
-  numbers < booleans < strings < other.
-* Sorting is stable: records with equal values keep their insertion order.
-
-### Errors
+### Error responses
 
 Errors use RFC 9457 `application/problem+json`:
 
 ```json
-{ "type": "about:blank", "title": "Not Found", "status": 404,
-  "detail": "Dataset 'foo' does not exist.", "instance": "/api/dataset/foo/query" }
+{
+  "type": "about:blank",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "Dataset 'foo' does not exist.",
+  "instance": "/api/dataset/foo/query"
+}
 ```
 
 | Status | When |
 |--------|------|
-| 400 | Malformed JSON / body not an object; missing or non-integer `id`; invalid dataset name; unknown `groupBy`/`sortBy` field; invalid `order` |
-| 404 | Querying a dataset that has no records |
-| 405 / 415 | Unsupported HTTP method / content type |
-| 409 | `id` already exists in the dataset |
-| 500 | Unexpected error (details are logged, never returned) |
+| `400 Bad Request` | Malformed JSON or body is not an object; missing / non-integer `id`; invalid dataset name; unknown `groupBy` / `sortBy` field; invalid `order` |
+| `404 Not Found` | Querying a dataset that has no records |
+| `405` / `415` | Unsupported HTTP method / content type |
+| `409 Conflict` | `id` already exists in the dataset |
+| `500 Internal Server Error` | Unexpected failure (details are logged, never returned) |
 
 ---
 
-## Design
+## API documentation and testing tools
+
+- **Swagger UI** - https://jsonoperations.onrender.com/swagger-ui/index.html. Browse every endpoint, parameter, example and error response, and execute requests from the browser.
+- **OpenAPI 3 JSON** - https://jsonoperations.onrender.com/v3/api-docs. Import into Postman, Insomnia or a client generator.
+- **Postman collection** - [`docs/json-dataset-service.postman_collection.json`](docs/json-dataset-service.postman_collection.json). Import it, then run the folders in order: *1. Insert*, *2. Query*, *3. Error cases*. Change the `baseUrl` collection variable to `https://jsonoperations.onrender.com` to test the deployed service (default is `http://localhost:8080`).
+
+---
+
+## Run locally
+
+**Prerequisites:** JDK 17 or newer. Maven is provided by the wrapper.
+
+```bash
+git clone <your-repo-url>
+cd json-dataset-service
+./mvnw spring-boot:run            # Windows: mvnw.cmd spring-boot:run
+```
+
+With no extra configuration the app starts on `http://localhost:8080` using an **in-memory H2 database** (data is lost on restart). Swagger UI is at `http://localhost:8080/swagger-ui/index.html`.
+
+### Use PostgreSQL locally
+
+Create a local, git-ignored file `src/main/resources/application-postgres.properties` using the template `application-postgres.properties.example`, fill in your database URL and credentials, and run:
+
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres
+```
+
+Credentials are never committed to the repository. The `dataset_record` table is created automatically on startup.
+
+### Run the tests
+
+```bash
+./mvnw test
+```
+
+Tests always run against an isolated in-memory H2 database (configured in `src/test/resources/application.properties`), so they never touch a real database.
+
+| Test type | Scope |
+|-----------|-------|
+| Unit | Grouping and sorting services, sort strategies, value comparator, JSON mapper, `DatasetQuery`, service orchestration (Mockito) |
+| `@DataJpaTest` | Repository queries and the unique constraint |
+| `@WebMvcTest` | Controller contract: status codes, bodies, validation, error mapping |
+| `@SpringBootTest` | End-to-end replay of the assignment examples, plus the OpenAPI / Swagger endpoints |
+
+---
+
+## Deployment
+
+The service is containerised with the included `Dockerfile` (multi-stage build) and deployed to **Render** with a **Neon PostgreSQL** database. Database settings are supplied as environment variables, so no secrets live in the repository:
+
+| Variable | Purpose |
+|----------|---------|
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://<host>/<database>?sslmode=require` |
+| `SPRING_DATASOURCE_USERNAME` | Database user |
+| `SPRING_DATASOURCE_PASSWORD` | Database password |
+
+`PORT` is injected by Render and honoured by the application, and forwarded headers are enabled so Swagger UI works correctly behind Render's HTTPS proxy.
+
+---
+
+## Architecture
 
 ```
-controller  DatasetController            HTTP mapping, input validation, DTOs in/out
-dto         DatasetQuery, SortOrder,     Immutable request/response types
-            InsertRecordResponse, QueryResponse
-service     DatasetService(+Impl)        Orchestration (facade over the pieces below)
-            GroupingService              Group-by logic
-            SortingService               Chooses a SortStrategy by SortOrder
-            RecordFieldValidator         "Field exists in dataset?" check
-strategy    SortStrategy                 Strategy pattern:
-            AscendingSortStrategy,         one implementation per direction,
-            DescendingSortStrategy         auto-registered by Spring
-            FieldValueComparator         Type-safe ordering of arbitrary JSON values
-repository  RecordRepository             Spring Data JPA
-entity      DatasetRecord                (dataset_name, record_id) unique; JSON stored as TEXT
-exception   *Exception, GlobalExceptionHandler
+Client -> DatasetController -> DatasetService (facade) -> GroupingService
+                                                      -> SortingService -> SortStrategy (Asc / Desc)
+                                                      -> RecordFieldValidator
+                                                      -> RecordRepository -> PostgreSQL
 ```
 
-* **Strategy pattern** for sort direction - add a new direction/behaviour by adding a `@Component`
-  implementing `SortStrategy`; nothing else changes.
-* **Storage model:** one table, `dataset_record`, with the whole record as JSON text. This works on every relational
-  database. The unique constraint `(dataset_name, record_id)` is the real guard against duplicates (the
-  service also maps a race-condition violation to 409).
-* **Trade-off:** group/sort run in memory after loading the dataset. That is simple and fully dynamic for any field,
-  but for very large datasets you would push the work into the database (e.g. PostgreSQL `jsonb` operators) and
-  add pagination.
+| Layer | Classes | Responsibility |
+|-------|---------|----------------|
+| controller | `DatasetController` | HTTP mapping, path / query validation, OpenAPI annotations |
+| dto | `DatasetQuery`, `SortOrder`, `InsertRecordResponse`, `QueryResponse` | Immutable request / response types (Java records) |
+| service | `DatasetService`, `DatasetServiceImpl` | Orchestrates the insert and query use cases |
+| | `GroupingService`, `SortingService`, `RecordFieldValidator`, `RecordJsonMapper` | Single-purpose collaborators |
+| strategy | `SortStrategy`, `AscendingSortStrategy`, `DescendingSortStrategy`, `FieldValueComparator` | Sort behaviour and type-safe value ordering |
+| repository | `RecordRepository` | Spring Data JPA access |
+| entity | `DatasetRecord` | Persistence model |
+| exception | `GlobalExceptionHandler` and domain exceptions | Maps errors to HTTP problem responses |
+| config | `OpenApiConfig` | Swagger / OpenAPI metadata |
 
-## Postman
+## Project structure
 
-Import `docs/json-dataset-service.postman_collection.json`. Run the three "Insert" requests first, then the queries.
+```
+json-dataset-service
+├── docs/                                      Postman collection
+├── Dockerfile
+├── src/main/java/com/assignment/jsondataset
+│   ├── config/  controller/  dto/  entity/
+│   └── exception/  repository/  service/  strategy/
+├── src/main/resources
+│   ├── application.properties
+│   └── application-postgres.properties.example
+├── src/test/java/...                          unit, slice and integration tests
+├── src/test/resources/application.properties  H2 config for tests
+└── pom.xml
+```
+
+## Design decisions and limitations
+
+- **JSON as text.** Storing the record as JSON text in a single table is portable across relational databases and supports arbitrary fields. Native `jsonb` columns would allow database-side filtering but tie the schema to PostgreSQL.
+- **In-memory grouping and sorting.** Operators run in the application after loading the dataset. This is simple and fully dynamic for any field. For very large datasets the work should move into the database (for example PostgreSQL `jsonb` operators) together with pagination.
+- **No authentication.** Out of scope for this assignment.
