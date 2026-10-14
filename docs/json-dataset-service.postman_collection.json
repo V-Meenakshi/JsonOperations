@@ -1,0 +1,527 @@
+{
+  "info": {
+    "name": "JSON Dataset Service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Run the three Insert requests first (in order), then the queries."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Insert",
+      "item": [
+        {
+          "name": "Insert John Doe",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"name\": \"John Doe\",\n  \"age\": 30,\n  \"department\": \"Engineering\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/dataset/employee_dataset/record",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dataset",
+                "employee_dataset",
+                "record"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Insert Jane Smith",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 2,\n  \"name\": \"Jane Smith\",\n  \"age\": 25,\n  \"department\": \"Engineering\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/dataset/employee_dataset/record",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dataset",
+                "employee_dataset",
+                "record"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Insert Alice Brown",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 3,\n  \"name\": \"Alice Brown\",\n  \"age\": 28,\n  \"department\": \"Marketing\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/dataset/employee_dataset/record",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dataset",
+                "employee_dataset",
+                "record"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Query",
+      "item": [
+        {
+          "name": "Group by department",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dataset/employee_dataset/query?groupBy=department",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dataset",
+                "employee_dataset",
+                "query"
+              ],
+              "query": [
+                {
+                  "key": "groupBy",
+                  "value": "department"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sort by age ascending",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dataset/employee_dataset/query?sortBy=age&order=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dataset",
+                "employee_dataset",
+                "query"
+              ],
+              "query": [
+                {
+                  "key": "sortBy",
+                  "value": "age"
+                },
+                {
+                  "key": "order",
+                  "value": "asc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sort by age descending",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dataset/employee_dataset/query?sortBy=age&order=desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dataset",
+                "employee_dataset",
+                "query"
+              ],
+              "query": [
+                {
+                  "key": "sortBy",
+                  "value": "age"
+                },
+                {
+                  "key": "order",
+                  "value": "desc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Group by department + sort by age",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dataset/employee_dataset/query?groupBy=department&sortBy=age&order=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dataset",
+                "employee_dataset",
+                "query"
+              ],
+              "query": [
+                {
+                  "key": "groupBy",
+                  "value": "department"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "age"
+                },
+                {
+                  "key": "order",
+                  "value": "asc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "No operators (all records)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dataset/employee_dataset/query",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dataset",
+                "employee_dataset",
+                "query"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Error cases",
+      "item": [
+        {
+          "name": "Duplicate id -> 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"name\": \"Clone\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/dataset/employee_dataset/record",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dataset",
+                "employee_dataset",
+                "record"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Missing id -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"No id\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/dataset/employee_dataset/record",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dataset",
+                "employee_dataset",
+                "record"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unknown dataset -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dataset/does_not_exist/query?groupBy=department",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dataset",
+                "does_not_exist",
+                "query"
+              ],
+              "query": [
+                {
+                  "key": "groupBy",
+                  "value": "department"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unknown field -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dataset/employee_dataset/query?groupBy=salary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dataset",
+                "employee_dataset",
+                "query"
+              ],
+              "query": [
+                {
+                  "key": "groupBy",
+                  "value": "salary"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invalid order -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dataset/employee_dataset/query?sortBy=age&order=sideways",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dataset",
+                "employee_dataset",
+                "query"
+              ],
+              "query": [
+                {
+                  "key": "sortBy",
+                  "value": "age"
+                },
+                {
+                  "key": "order",
+                  "value": "sideways"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
