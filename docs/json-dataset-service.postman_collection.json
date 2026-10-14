@@ -2,12 +2,12 @@
   "info": {
     "name": "JSON Dataset Service",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Run the three Insert requests first (in order), then the queries."
+    "description": "Run folder 1 (Insert) first, then 2 (Query) and 3 (Error cases). baseUrl defaults to the deployed service; change it to http://localhost:8080 to test a local run. Insert requests accept 201 (created) or 409 (already inserted on an earlier run), so the collection can be re-run safely."
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8080"
+      "value": "https://jsonoperations.onrender.com"
     }
   ],
   "item": [
@@ -22,7 +22,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));"
+                  "pm.test(\"Status is 201 (created) or 409 (already inserted)\", () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));"
                 ]
               }
             }
@@ -61,7 +61,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));"
+                  "pm.test(\"Status is 201 (created) or 409 (already inserted)\", () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));"
                 ]
               }
             }
@@ -100,7 +100,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));"
+                  "pm.test(\"Status is 201 (created) or 409 (already inserted)\", () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));"
                 ]
               }
             }
@@ -126,6 +126,84 @@
                 "api",
                 "dataset",
                 "employee_dataset",
+                "record"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Insert Bob Wilson (Sales)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201 (created) or 409 (already inserted)\", () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 4,\n  \"name\": \"Bob Wilson\",\n  \"age\": 35,\n  \"department\": \"Sales\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/dataset/employee_dataset/record",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dataset",
+                "employee_dataset",
+                "record"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Insert product (different dataset, different fields)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201 (created) or 409 (already inserted)\", () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"name\": \"Laptop\",\n  \"price\": 999.99,\n  \"category\": \"Electronics\",\n  \"inStock\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/dataset/product_dataset/record",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dataset",
+                "product_dataset",
                 "record"
               ]
             }
